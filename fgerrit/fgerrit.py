@@ -99,21 +99,22 @@ class FGerrit(object):
         else:
             sshcmd = 'ssh -p %d %s@%s "gerrit query --format=TEXT %s"' % \
                 (self.ssh_port, self.ssh_user, self.ssh_host, qargs)
-        tmp = tempfile.TemporaryFile()
-        p = subprocess.Popen(sshcmd, shell=True, stdout=tmp,
-                             stderr=subprocess.STDOUT)
+        stdout, stderr = tempfile.TemporaryFile(), tempfile.TemporaryFile()
+        p = subprocess.Popen(sshcmd, shell=True,
+                             stdout=stdout, stderr=stderr)
         retval = p.wait()
-        tmp.seek(0)
+        stdout.seek(0), stderr.seek(0)
         if retval != 0:
-            raise Exception('Error on ssh to gerrit %s' % tmp.readlines())
+            raise Exception('Error on ssh to gerrit out: %r err: %r' %
+                    (stdout.readlines(), stderr.readlines()))
         if not plain:
             result = []
-            for line in tmp.readlines():
+            for line in stdout.readlines():
                 result.append(json.loads(line))
             retval = p.wait()
             return [x for x in result if 'status' in x]
         else:
-            return " ".join(tmp.readlines())
+            return " ".join(stdout.readlines())
 
     def _run_cmd(self, cargs):
         sshcmd = "ssh -p %d %s@%s %s" % (
